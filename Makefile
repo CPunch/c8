@@ -1,8 +1,8 @@
 # make clean && make && ./bin/c8
 
 CC=clang
-CFLAGS=-fPIE -Wall -g
-LDFLAGS=-lncurses -fsanitize=address
+CFLAGS=-fPIE -Wall #-g
+LDFLAGS=-lncurses #-fsanitize=address
 OUT=bin/c8
 
 CHDR=\

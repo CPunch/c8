@@ -23,7 +23,7 @@ the output binary will be located at `bin/c8`
 Pass the rom as the only argument to the binary, eg. to run the maze rom do
 
 ```
-./bin/c8 maze.ch8
+./bin/c8 roms/maze.ch8
 ```
 
 The controls are mapped to the keyboard, here is a side by side for comparison
