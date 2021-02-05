@@ -7,7 +7,7 @@ void renderer_init(C8State *v) {
     mainw = initscr();
     raw();
     noecho();
-    timeout(CLOCK_RATE/2);
+    timeout(CLOCK_RATE);
     keypad(stdscr, TRUE);
     clear();
 }
@@ -70,8 +70,9 @@ int grabkeys(C8State *vm) {
 
 int renderer_waitforinput(C8State *vm) {
     int key;
-    while ((key = grabkeys(vm)) == -1);
 
+    // wait until we get input
+    while ((key = grabkeys(vm)) == -1);
     return key;
 }
 

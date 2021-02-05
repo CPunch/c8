@@ -2,7 +2,6 @@
 #define CHIP8_CHIP
 
 #include <inttypes.h>
-#include <sys/time.h>
 
 /*
     This was based off of the specification given by http://www.cs.columbia.edu/~sedwards/classes/2016/4840-spring/designs/Chip8.pdf
@@ -17,8 +16,8 @@
 #define HGFX        64
 #define GFXSIZE     (VGFX*HGFX)
 
-#define CLOCK_HZ 60
-#define CLOCK_RATE ((int) ((1.0 / CLOCK_HZ) * 1000 + 0.5))
+#define CLOCK_HZ    480
+#define CLOCK_RATE  ((int)((1.0 / CLOCK_HZ) * 1000))
 
 // define some macros to grab the arguments in each 16bit instruction 
 #define GET_X000(i) ((i & 0xF000) >> 12)
@@ -66,8 +65,8 @@ typedef struct {
     uint8_t     ram[RAMSIZE];
     uint8_t     frame[VGFX][HGFX]; // 64*32 1 bit frame buffer
     int         keys[C8KEY_MAX];
-    
-    struct timeval clock;
+
+    int ticks;
 } C8State;
 
 // allocates a new chip8 emulator state

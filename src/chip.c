@@ -42,6 +42,7 @@ C8State *vm_start() {
     vm->indx = 0;
     vm->dtimer = 0;
     vm->stimer = 0;
+    vm->ticks = 0;
 
     // zero out the stack, registers & memory
     for (int i = 0; i < STACKSIZE; i++)
@@ -61,7 +62,6 @@ C8State *vm_start() {
     for (int i = 0; i < (sizeof(C8FONT) / sizeof(uint8_t)); i++)
         vm->ram[FONTADDR + i] = C8FONT[i];
 
-    gettimeofday(&vm->clock, NULL);
     // zero out the frame buffer 
     vm_clear(vm);
     return vm;
@@ -87,24 +87,8 @@ void vm_clear(C8State *vm) {
     }
 }
 
-int tdiff(struct timeval *e, struct timeval *s) {
-    return (e->tv_sec - s->tv_sec) * 1000 + (e->tv_usec - s->tv_usec) / 1000;
-}
-
 void vm_setKey(C8State *vm, C8KEY key, int state) {
     vm->keys[key] = state;
-}
-
-void debugDraw(C8State *vm) {
-    for (int i = 0; i < HGFX; i++)
-        printf("=");
-    printf("\n");
-
-    for (int row = 0; row < VGFX; row++) {
-        for (int col = 0; col < HGFX; col++) 
-            printf(vm->frame[row][col] ? "#" : " ");
-        printf("\n");
-    }
 }
 
 // draws the sprite n at (x, y)
@@ -115,7 +99,7 @@ void vm_draw(C8State *vm, int x, int y, int n) {
             uint8_t bit = (vm->ram[vm->indx + byteI] >> bitI) & 0x1;
 
             // grab a pointer to the pixel
-            uint8_t *pixel = &vm->frame[(y + byteI) % VGFX][(x + bitI) % HGFX];
+            uint8_t *pixel = &vm->frame[(y + byteI) % VGFX][(x + (7 - bitI)) % HGFX];
 
             // if the pixel is going to be erased and it's on, set the collision flag
             if (bit & *pixel) 
@@ -133,13 +117,6 @@ void vm_unimpl(C8State *vm, uint16_t i) {
     vm_fatal("Unknown instruction at 0x%04X [0x%04X]\n", vm->pc - 2, i);
 }
 
-void printRegisters(C8State *vm) {
-    for (int i = 0; i < VREGISTERS; i++) {
-        printf("v[%02x] = %02X ", i, vm->v[i]);
-    }
-    printf("\n");
-}
-
 /*
         chip8's instruction set is very weird, the opcodes are all over the place, which is why this switch
     statement has so many branches. i tried to group things together as much as possible though
@@ -147,27 +124,17 @@ void printRegisters(C8State *vm) {
 
 int vm_tick(C8State *vm) {
     // grab the current instruction and increment the program counter
-    if (vm->pc > 0x1000 || 0x200 > vm->pc) {
-        vm_fatal("PC IS OUT OF BOUNDS! [0x%04X]\n", vm->pc);
-    }
-    
-    struct timeval clock;
-    gettimeofday(&clock, NULL);
-    
     uint16_t instr = vm->ram[vm->pc] << 8 | vm->ram[vm->pc + 1];
     vm->pc += 2;
 
-    if (tdiff(&clock, &vm->clock) > CLOCK_RATE) {
+    if (vm->ticks++ % 60) { // every 60 ticks, decrement timers
         if (vm->dtimer > 0)
             vm->dtimer--;
         
         if (vm->stimer > 0)
             vm->stimer--;
-        
-        vm->clock = clock;
     }
     
-    //printRegisters(vm);
     // grab the opcode
     switch (GET_X000(instr)) {
     case 0x0: { // basic instructions
@@ -214,7 +181,7 @@ int vm_tick(C8State *vm) {
         break;
     case 0x7: // ADD vx, byte
         // adds byte to v[x] and stores it in v[x]
-        vm->v[GET_0X00(instr)] = vm->v[GET_0X00(instr)] + GET_00XX(instr);
+        vm->v[GET_0X00(instr)] += GET_00XX(instr);
         break;
     case 0x8: // generic bitwise operations on v registers
         // grab 2nd opcode
@@ -225,40 +192,40 @@ int vm_tick(C8State *vm) {
             break;
         case 0x1: // OR vx, vy
             // ORs v[x]  and v[y] together, stores the result in v[x]
-            vm->v[GET_0X00(instr)] = vm->v[GET_0X00(instr)] | vm->v[GET_00X0(instr)];
+            vm->v[GET_0X00(instr)] |= vm->v[GET_00X0(instr)];
             break;
         case 0x2: // AND vx, vy
             // ANDs v[x]  and v[y] together, stores the result in v[x]
-            vm->v[GET_0X00(instr)] = vm->v[GET_0X00(instr)] & vm->v[GET_00X0(instr)];
+            vm->v[GET_0X00(instr)] &= vm->v[GET_00X0(instr)];
             break;
         case 0x3: // XOR vx, vy
             // XORs v[x]  and v[y] together, stores the result in v[x]
-            vm->v[GET_0X00(instr)] = vm->v[GET_0X00(instr)] ^ vm->v[GET_00X0(instr)];
+            vm->v[GET_0X00(instr)] ^= vm->v[GET_00X0(instr)];
             break;
         case 0x4: // ADD vx, vy
             // ADDs v[x] and v[y] together, stores the result in v[x]. if there's an overflow, set the carry bit in v[0xF]
             vm->v[0xF] = ((int)vm->v[GET_0X00(instr)]) + ((int)vm->v[GET_00X0(instr)]) > 255 ? 1 : 0;
-            vm->v[GET_0X00(instr)] = vm->v[GET_00X0(instr)] + vm->v[GET_0X00(instr)];
+            vm->v[GET_0X00(instr)] += vm->v[GET_00X0(instr)];
             break;
         case 0x5: // SUB vx, vy
             // SUBs v[y] from v[x] and stores the result in v[x]. if there's an underflow, set the NOT borrow bit in v[0xF]
-            vm->v[0xF] = vm->v[GET_0X00(instr)] > vm->v[GET_00X0(instr)] ? 1 : 0; // vx > vy, set v[0xF] to 1
-            vm->v[GET_0X00(instr)] = vm->v[GET_0X00(instr)] - vm->v[GET_00X0(instr)];
+            vm->v[0xF] = vm->v[GET_0X00(instr)] > vm->v[GET_00X0(instr)]; // vx > vy, set v[0xF] to 1
+            vm->v[GET_0X00(instr)] -= vm->v[GET_00X0(instr)];
             break;
         case 0x6: // SHR vx
             // copy the least-significant bit of v[x] to v[0xF], then bit shift v[x] by 1 to the right and store the result in v[x]
-            vm->v[0xF] = vm->v[GET_0X00(instr)] & 0x1;
-            vm->v[GET_0X00(instr)] = vm->v[GET_0X00(instr)] >> 1;
+            vm->v[0xF] = vm->v[GET_0X00(instr)] & 0x01;
+            vm->v[GET_0X00(instr)] >>= 1;
             break;
         case 0x7: // SUBN vx, vy
             // SUBs v[x] from v[y] and stores the result in v[x]. if there's an underflow, set the NOT borrow bit in v[0xF]
-            vm->v[0xF] = vm->v[GET_00X0(instr)] > vm->v[GET_0X00(instr)] ? 1 : 0; // vy > vx, set v[0xF] to 1
+            vm->v[0xF] = vm->v[GET_00X0(instr)] > vm->v[GET_0X00(instr)]; // vy > vx, set v[0xF] to 1
             vm->v[GET_0X00(instr)] = vm->v[GET_00X0(instr)] - vm->v[GET_0X00(instr)];
             break;
         case 0xE: // SHL vx, vy
             // copy the most-significant bit of v[x] to v[0xF], then bit shift v[x] by 1 to the left and store the result in v[x]
-            vm->v[0xF] = (vm->v[GET_0X00(instr)] << 7) & 0x1;
-            vm->v[GET_0X00(instr)] = vm->v[GET_0X00(instr)] << 1;
+            vm->v[0xF] = (vm->v[GET_0X00(instr)] & 0x80) != 0;
+            vm->v[GET_0X00(instr)] <<= 1;
             break;
         default:
             vm_unimpl(vm, instr);
@@ -324,7 +291,7 @@ int vm_tick(C8State *vm) {
             break;
         case 0x1E: // ADD I, vx
             // add v[x] to indx, store back in indx
-            vm->v[0xF] = (vm->v[GET_0X00(instr)] + vm->indx) > 0xfff ? 1 : 0;
+            vm->v[0xF] = (vm->v[GET_0X00(instr)] + vm->indx) > 0xFFF ? 1 : 0;
             vm->indx = vm->v[GET_0X00(instr)] + vm->indx;
             break;
         case 0x29: // LD F, vx
@@ -333,19 +300,19 @@ int vm_tick(C8State *vm) {
             break;
         case 0x33: // LD B, vx
             // load BCD of v[x] to I, I+1, and I+2
-            vm->ram[vm->indx]       = (vm->v[GET_0X00(instr)] % 1000) / 100; // hundreds digit
-            vm->ram[vm->indx + 1]   = (vm->v[GET_0X00(instr)] % 100) / 10; // tens digit 
+            vm->ram[vm->indx]       = (vm->v[GET_0X00(instr)] / 100) % 10; // hundreds digit
+            vm->ram[vm->indx + 1]   = (vm->v[GET_0X00(instr)] / 10) % 10; // tens digit 
             vm->ram[vm->indx + 2]   = (vm->v[GET_0X00(instr)] % 10); // ones digit 
             break;
         case 0x55: // LD [I], vx
             // store v[0x0] through v[0x8] to memory starting at I. move I to the end
-            for (int i = 0; i < GET_0X00(instr); i++)
+            for (int i = 0; i <= GET_0X00(instr); i++)
                 vm->ram[vm->indx + i] = vm->v[i];
             vm->indx += GET_0X00(instr) + 1;
             break;
         case 0x65: // LD vx, [I]
             // copies ram into the v[0] through v[x] registers starting at I. move I to the end
-            for (int i = 0; i < GET_0X00(instr); i++)
+            for (int i = 0; i <= GET_0X00(instr); i++)
                 vm->v[i] = vm->ram[vm->indx + i];
             vm->indx += GET_0X00(instr) + 1;
             break;
