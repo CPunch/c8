@@ -6,7 +6,7 @@ int main() {
     renderer_init();
 
     // load rom
-    vm_load(vm, "roms/clock.ch8");
+    vm_load(vm, "roms/keypad.ch8");
 
     while (1) {
         renderer_step(vm);

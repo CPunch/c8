@@ -7,9 +7,6 @@
 #include <errno.h>
 
 #define vm_fatal(format, ...) \
-    mvprintw(1, 0, "[FATAL] " format, __VA_ARGS__); \
-    refresh(); \
-    getchar(); \
     endwin(); \
     printf("[FATAL] " format, __VA_ARGS__); \
     exit(1);
@@ -182,7 +179,6 @@ int vm_tick(C8State *vm) {
         case 0xEE: // RET
             // pop address off the stack and set pc to it, then subtract 2 since the pc is incremented every step
             vm->pc = vm->stack[--vm->sp];
-            vm->pc -= 2;
             break;
         default:
             vm_unimpl(vm, instr);
@@ -229,19 +225,19 @@ int vm_tick(C8State *vm) {
             break;
         case 0x1: // OR vx, vy
             // ORs v[x]  and v[y] together, stores the result in v[x]
-            vm->v[GET_0X00(instr)] = vm->v[GET_00X0(instr)] | vm->v[GET_0X00(instr)];
+            vm->v[GET_0X00(instr)] = vm->v[GET_0X00(instr)] | vm->v[GET_00X0(instr)];
             break;
         case 0x2: // AND vx, vy
             // ANDs v[x]  and v[y] together, stores the result in v[x]
-            vm->v[GET_0X00(instr)] = vm->v[GET_00X0(instr)] & vm->v[GET_0X00(instr)];
+            vm->v[GET_0X00(instr)] = vm->v[GET_0X00(instr)] & vm->v[GET_00X0(instr)];
             break;
         case 0x3: // XOR vx, vy
             // XORs v[x]  and v[y] together, stores the result in v[x]
-            vm->v[GET_0X00(instr)] = vm->v[GET_00X0(instr)] ^ vm->v[GET_0X00(instr)];
+            vm->v[GET_0X00(instr)] = vm->v[GET_0X00(instr)] ^ vm->v[GET_00X0(instr)];
             break;
         case 0x4: // ADD vx, vy
             // ADDs v[x] and v[y] together, stores the result in v[x]. if there's an overflow, set the carry bit in v[0xF]
-            vm->v[0xF] = ((int)vm->v[GET_00X0(instr)]) + ((int)vm->v[GET_0X00(instr)]) > 255 ? 1 : 0;
+            vm->v[0xF] = ((int)vm->v[GET_0X00(instr)]) + ((int)vm->v[GET_00X0(instr)]) > 255 ? 1 : 0;
             vm->v[GET_0X00(instr)] = vm->v[GET_00X0(instr)] + vm->v[GET_0X00(instr)];
             break;
         case 0x5: // SUB vx, vy
@@ -328,6 +324,7 @@ int vm_tick(C8State *vm) {
             break;
         case 0x1E: // ADD I, vx
             // add v[x] to indx, store back in indx
+            vm->v[0xF] = (vm->v[GET_0X00(instr)] + vm->indx) > 0xfff ? 1 : 0;
             vm->indx = vm->v[GET_0X00(instr)] + vm->indx;
             break;
         case 0x29: // LD F, vx
