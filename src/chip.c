@@ -158,8 +158,6 @@ int vm_tick(C8State *vm) {
     gettimeofday(&clock, NULL);
     
     uint16_t instr = vm->ram[vm->pc] << 8 | vm->ram[vm->pc + 1];
-    mvprintw(0, 0, "Dispatching 0x%04X [0x%04X]\n", vm->pc, instr);
-    refresh();
     vm->pc += 2;
 
     if (tdiff(&clock, &vm->clock) > CLOCK_RATE) {
@@ -184,6 +182,7 @@ int vm_tick(C8State *vm) {
         case 0xEE: // RET
             // pop address off the stack and set pc to it, then subtract 2 since the pc is incremented every step
             vm->pc = vm->stack[--vm->sp];
+            vm->pc -= 2;
             break;
         default:
             vm_unimpl(vm, instr);

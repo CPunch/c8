@@ -7,8 +7,7 @@ void renderer_init(C8State *v) {
     mainw = initscr();
     raw();
     noecho();
-    //halfdelay(1);
-    nodelay(stdscr, TRUE);
+    timeout(CLOCK_RATE/2);
     keypad(stdscr, TRUE);
     clear();
 }
@@ -57,8 +56,6 @@ int grabkeys(C8State *vm) {
     // while there are still keys to grab, set the keys in the vm
     while ((c = getch()) != ERR) {
         C8KEY key = getC8Key(c);
-        mvprintw(0, 1, "got key '%c' : %d ", c, key);
-        refresh();
         if (key != C8KEY_MAX) {
             vm_setKey(vm, key, 1);
             pressed = key;
@@ -74,8 +71,7 @@ int grabkeys(C8State *vm) {
 int renderer_waitforinput(C8State *vm) {
     int key;
     while ((key = grabkeys(vm)) == -1);
-    mvprintw(0, 1, "returning");
-    refresh();
+
     return key;
 }
 
