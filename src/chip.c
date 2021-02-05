@@ -144,7 +144,7 @@ int vm_tick(C8State *vm) {
             vm_clear(vm);
             break;
         case 0xEE: // RET
-            // pop address off the stack and set pc to it, then subtract 2 since the pc is incremented every step
+            // pop address off the stack and set pc to it
             vm->pc = vm->stack[--vm->sp];
             break;
         default:
