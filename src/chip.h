@@ -16,10 +16,10 @@
 #define HGFX        64
 #define GFXSIZE     (VGFX*HGFX)
 
-#define CLOCK_HZ    480
+#define CLOCK_HZ    48
 #define CLOCK_RATE  ((int)((1.0 / CLOCK_HZ) * 1000))
 
-// define some macros to grab the arguments in each 16bit instruction 
+/* define some macros to grab the arguments in each 16bit instruction  */
 #define GET_X000(i) ((i & 0xF000) >> 12)
 #define GET_0X00(i) ((i & 0x0F00) >> 8)
 #define GET_00X0(i) ((i & 0x00F0) >> 4)
@@ -52,36 +52,36 @@ typedef enum {
 } C8KEY;
 
 typedef struct {
-    // registers
-    uint8_t     v[VREGISTERS]; // holds v0-vF
-    uint16_t    indx; // memory index
-    uint16_t    sp; // stack pointer
-    uint16_t    pc; // program counter
-    uint8_t     dtimer; // delay timer
-    uint8_t     stimer; // sound timer
+    /* registers */
+    uint8_t     v[VREGISTERS]; /* holds v0-vF */
+    uint16_t    indx; /* memory index */
+    uint16_t    sp; /* stack pointer */
+    uint16_t    pc; /* program counter */
+    uint8_t     dtimer; /* delay timer */
+    uint8_t     stimer; /* sound timer */
 
-    // misc. memory
+    /* misc. memory */
     uint16_t     stack[STACKSIZE];
     uint8_t     ram[RAMSIZE];
-    uint8_t     frame[VGFX][HGFX]; // 64*32 1 bit frame buffer
+    uint8_t     frame[VGFX][HGFX]; /* 64*32 1 bit frame buffer */
     int         keys[C8KEY_MAX];
 
     int ticks;
 } C8State;
 
-// allocates a new chip8 emulator state
+/* allocates a new chip8 emulator state */
 C8State *vm_start();
 
-// loads the rom from the filename
+/* loads the rom from the filename */
 void vm_load(C8State *vm, const char* rom);
 
-// clears the frame buffer
+/* clears the frame buffer */
 void vm_clear(C8State *vm);
 
-// emulates 1 tick
+/* emulates 1 tick */
 int vm_tick(C8State *vm);
 
-// sets the key[k] state
+/* sets the key[k] state */
 void vm_setKey(C8State *vm, C8KEY key, int state);
 
 #endif
