@@ -1,17 +1,17 @@
 # make clean && make && ./bin/c8
 
 CC=clang
-CFLAGS=-fPIE -Wall #-g
-LDFLAGS=-lncurses #-fsanitize=address
+CFLAGS=-fPIE -Wall -std=c89 #-g
+LDFLAGS=-pthread -lSDL2 #-fsanitize=address
 OUT=bin/c8
 
 CHDR=\
 	src/chip.h\
-	src/tui.h
+	src/gfx.h
 
 CSRC=\
 	src/chip.c\
-	src/tui.c\
+	src/gfx.c\
 	src/main.c
 
 COBJ=$(CSRC:.c=.o)

@@ -81,5 +81,5 @@ int renderer_step(C8State *vm) {
     vm_tick(vm);
     grabkeys(vm);
 
-    return 0;
+    return 1;
 }
